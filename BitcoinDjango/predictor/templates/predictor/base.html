@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Bitcoin Predictor{% endblock %}</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --blue:     #58a6ff;
+      --green:    #3fb950;
+      --orange:   #f78166;
+      --yellow:   #e3b341;
+      --purple:   #bc8cff;
+      --radius:   10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      gap: 2rem;
+    }
+    nav .brand {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--yellow);
+      text-decoration: none;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    nav a:hover, nav a.active { color: var(--text); }
+
+    /* ── Page wrapper ── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .card .sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    /* ── Grid ── */
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+    td {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(88,166,255,0.05); }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .badge-green  { background: rgba(63,185,80,0.15);  color: var(--green);  }
+    .badge-red    { background: rgba(247,129,102,0.15); color: var(--orange); }
+    .badge-yellow { background: rgba(227,179,65,0.15); color: var(--yellow); }
+    .badge-blue   { background: rgba(88,166,255,0.15); color: var(--blue);   }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1.2rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-yellow { background: var(--yellow); color: #000; }
+    .btn-blue   { background: var(--blue);   color: #000; }
+    .btn-ghost  {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .section-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    /* ── Color helpers ── */
+    .green  { color: var(--green);  }
+    .red    { color: var(--orange); }
+    .yellow { color: var(--yellow); }
+    .blue   { color: var(--blue);   }
+    .muted  { color: var(--muted);  }
+
+    /* ── Chart image ── */
+    .chart-img {
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Error box ── */
+    .error-box {
+      background: rgba(247,129,102,0.1);
+      border: 1px solid var(--orange);
+      border-radius: var(--radius);
+      padding: 1rem 1.5rem;
+      color: var(--orange);
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<nav>
+  <a href="{% url 'index' %}" class="brand">BTC Predictor</a>
+  <a href="{% url 'index' %}"      {% if request.resolver_match.url_name == 'index'     %}class="active"{% endif %}>Home</a>
+  <a href="{% url 'forecast' %}"   {% if request.resolver_match.url_name == 'forecast'  %}class="active"{% endif %}>Forecast</a>
+  <a href="{% url 'dashboard' %}"  {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+  <a href="{% url 'live' %}" {% if request.resolver_match.url_name == 'live' %}class="active"{% endif %}>Live</a>
+  <a href="{% url 'api_forecast' %}" target="_blank">API</a>
+</nav>
+
+<div class="container">
+  {% if error %}
+    <div class="error-box">Error: {{ error }}</div>
+  {% else %}
+    {% block content %}{% endblock %}
+  {% endif %}
+</div>
+
+</body>
+</html>

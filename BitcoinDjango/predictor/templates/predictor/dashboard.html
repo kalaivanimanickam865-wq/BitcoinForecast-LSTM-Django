@@ -1,0 +1,31 @@
+{% extends "predictor/base.html" %}
+{% block title %}BTC — Full Dashboard{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom:1.5rem; display:flex;
+     align-items:center; justify-content:space-between;">
+  <div>
+    <h1 style="font-size:1.5rem; font-weight:700;">Full Dashboard</h1>
+    <p class="muted" style="margin-top:0.3rem; font-size:0.9rem;">
+      Complete model evaluation &amp; forecast overview
+    </p>
+  </div>
+  <a href="{% url 'forecast' %}" class="btn btn-yellow">
+    Live Forecast →
+  </a>
+</div>
+
+{% if dashboard_img %}
+<div class="card">
+  <img src="data:image/png;base64,{{ dashboard_img }}"
+       class="chart-img"
+       alt="Bitcoin Predictor Final Dashboard"/>
+</div>
+{% else %}
+<div class="error-box">
+  Dashboard image not found. Run <code>08_forecast_dashboard.py</code> first.
+</div>
+{% endif %}
+
+{% endblock %}

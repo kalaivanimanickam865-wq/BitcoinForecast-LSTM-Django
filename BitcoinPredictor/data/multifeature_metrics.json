@@ -1,0 +1,11 @@
+{
+  "model": "Multi-Feature Hybrid LSTM-GRU (Fixed)",
+  "features": 13,
+  "rmse": 6084.02,
+  "mae": 4538.53,
+  "mape": 6.77,
+  "r2": 0.9007,
+  "directional_acc": 50.71,
+  "rmse_vs_hybrid": -1.49,
+  "da_vs_hybrid": -3.45
+}

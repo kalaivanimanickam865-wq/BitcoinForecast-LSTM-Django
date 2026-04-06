@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+*.keras
+*.pkl
+*.npy
+btcenv/
+venv/
+env/
+.env
+*.log

@@ -1,0 +1,147 @@
+{% extends "predictor/base.html" %}
+{% block title %}Bitcoin Predictor — Home{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div style="text-align:center; padding: 2.5rem 0 2rem;">
+  <h1 style="font-size:2.2rem; font-weight:800; color:var(--yellow);">
+    Bitcoin Price Predictor
+  </h1>
+  <p style="color:var(--muted); margin-top:0.5rem; font-size:1rem;">
+    Hybrid LSTM-GRU deep learning model &nbsp;|&nbsp;
+    Trained on 2018–2025 &nbsp;|&nbsp;
+    Data up to {{ last_date }}
+  </p>
+  <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
+    <a href="{% url 'forecast' %}" class="btn btn-yellow">View 30-Day Forecast</a>
+    <a href="{% url 'dashboard' %}" class="btn btn-ghost">Full Dashboard</a>
+  </div>
+</div>
+
+<!-- Live price banner -->
+<div class="card" style="text-align:center; margin-bottom:1.5rem;
+     border-color:var(--yellow); background:rgba(227,179,65,0.05);">
+  <h2>
+    Live BTC Price
+    {% if is_live %}
+      <span class="badge badge-green" style="font-size:0.7rem; vertical-align:middle;">
+        LIVE
+      </span>
+    {% else %}
+      <span class="badge badge-yellow" style="font-size:0.7rem; vertical-align:middle;">
+        OFFLINE
+      </span>
+    {% endif %}
+  </h2>
+  <div class="value yellow" style="font-size:2.8rem;">${{ live_price }}</div>
+  <div style="margin-top:0.4rem;">
+    {% if live_change >= 0 %}
+      <span class="badge badge-green">+{{ live_change }}% (24h)</span>
+    {% else %}
+      <span class="badge badge-red">{{ live_change }}% (24h)</span>
+    {% endif %}
+  </div>
+  <div class="sub" style="margin-top:0.4rem;">
+    Source: {{ live_source }} &nbsp;|&nbsp;
+    Model data up to: {{ last_date }}
+  </div>
+</div>
+
+<!-- Metrics grid -->
+<div class="grid-4" style="margin-bottom:2rem;">
+  <div class="card">
+    <h2>RMSE</h2>
+    <div class="value">${{ metrics.rmse|floatformat:0 }}</div>
+    <div class="sub">Root Mean Squared Error</div>
+  </div>
+  <div class="card">
+    <h2>MAE</h2>
+    <div class="value">${{ metrics.mae|floatformat:0 }}</div>
+    <div class="sub">Mean Absolute Error</div>
+  </div>
+  <div class="card">
+    <h2>MAPE</h2>
+    <div class="value">{{ metrics.mape|floatformat:2 }}%</div>
+    <div class="sub">Mean Abs. Percentage Error</div>
+  </div>
+  <div class="card">
+    <h2>R² Score</h2>
+    <div class="value green">{{ metrics.r2|floatformat:4 }}</div>
+    <div class="sub">Variance explained</div>
+  </div>
+</div>
+
+<!-- 7-day forecast preview -->
+{% if forecast_table %}
+<div class="card" style="margin-bottom:2rem;">
+  <div class="section-header">
+    <h3>7-Day Forecast Preview</h3>
+    <a href="{% url 'forecast' %}" class="btn btn-ghost" style="font-size:0.8rem;">
+      Full Forecast →
+    </a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Forecast Price</th>
+        <th>Upper Band</th>
+        <th>Lower Band</th>
+        <th>Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in forecast_table %}
+      <tr>
+        <td class="muted">{{ row.Date }}</td>
+        <td><strong>${{ row.Forecast|floatformat:0 }}</strong></td>
+        <td class="green">${{ row.Upper_Band|floatformat:0 }}</td>
+        <td class="red">${{ row.Lower_Band|floatformat:0 }}</td>
+        <td>
+          {% if row.Change_Pct >= 0 %}
+            <span class="badge badge-green">+{{ row.Change_Pct|floatformat:1 }}%</span>
+          {% else %}
+            <span class="badge badge-red">{{ row.Change_Pct|floatformat:1 }}%</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Model info -->
+<div class="grid-2">
+  <div class="card">
+    <h2>Model Architecture</h2>
+    <div style="margin-top:0.75rem; font-size:0.9rem; line-height:2;">
+      <div><span class="muted">Type:</span> &nbsp; Hybrid LSTM-GRU</div>
+      <div><span class="muted">Layers:</span> &nbsp; LSTM(50) → GRU(50) → Dense</div>
+      <div><span class="muted">Window:</span> &nbsp; 60 days lookback</div>
+      <div><span class="muted">Training:</span> &nbsp; 2018–2024 (80%)</div>
+      <div><span class="muted">Testing:</span> &nbsp; 2024–2025 (20%)</div>
+      <div><span class="muted">Live Price:</span> &nbsp;
+        <span class="green">CoinGecko API</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Disclaimer</h2>
+    <p style="font-size:0.88rem; line-height:1.7; color:var(--muted); margin-top:0.5rem;">
+      This tool is for <strong style="color:var(--text);">educational purposes only</strong>.
+      Cryptocurrency markets are highly volatile and unpredictable.
+      Model predictions are based on historical patterns and
+      <strong style="color:var(--orange);">do not constitute financial advice</strong>.
+      Never invest more than you can afford to lose.
+    </p>
+  </div>
+</div>
+
+<!-- Auto-refresh live price every 60 seconds -->
+<script>
+  setTimeout(function(){ location.reload(); }, 60000);
+</script>
+
+{% endblock %}

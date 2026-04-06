@@ -1,0 +1,288 @@
+{% extends "predictor/base.html" %}
+{% block title %}BTC Live Dashboard{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom: 1.5rem; display:flex; align-items:center; justify-content:space-between;">
+  <div>
+    <h1 style="font-size:1.4rem; font-weight:600;">
+      <span style="display:inline-block; width:10px; height:10px; border-radius:50%;
+             background:var(--green); margin-right:8px;
+             animation: pulse 1.5s infinite;"></span>
+      Live BTC Dashboard
+    </h1>
+    <p class="muted" style="font-size:0.85rem; margin-top:0.2rem;">
+      Real-time data via CoinGecko API — auto-refreshes every 60 seconds
+    </p>
+  </div>
+  <button onclick="fetchAll()"
+          style="background:transparent; border:1px solid var(--border);
+                 color:var(--text); padding:0.4rem 1rem; border-radius:6px;
+                 cursor:pointer; font-size:0.85rem;">
+    Refresh
+  </button>
+</div>
+
+<div id="loading" style="text-align:center; padding:3rem; color:var(--muted);">
+  Fetching live data...
+</div>
+
+<div id="content" style="display:none;">
+
+  <!-- Main price card -->
+  <div class="card" style="margin-bottom:1rem; border-color:#3fb950;
+       background:rgba(63,185,80,0.05);">
+    <div style="display:flex; align-items:baseline; gap:1rem; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:0.8rem; color:var(--muted); margin-bottom:4px;">
+          Bitcoin (BTC/USD)
+        </div>
+        <div id="price-main"
+             style="font-size:2.8rem; font-weight:700; color:var(--yellow);">
+          --
+        </div>
+      </div>
+      <div id="change-badge"></div>
+      <div style="margin-left:auto; display:flex; gap:2rem; flex-wrap:wrap;">
+        <div style="text-align:right;">
+          <div style="font-size:0.75rem; color:var(--muted);">24h High</div>
+          <div id="high-24" style="font-weight:600;">--</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:0.75rem; color:var(--muted);">24h Low</div>
+          <div id="low-24" style="font-weight:600;">--</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:0.75rem; color:var(--muted);">24h Volume</div>
+          <div id="vol-24" style="font-weight:600;">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics grid -->
+  <div class="grid-4" style="margin-bottom:1rem;">
+    <div class="card">
+      <h2>Market Cap</h2>
+      <div class="value" id="mkt-cap">--</div>
+    </div>
+    <div class="card">
+      <h2>7d Change</h2>
+      <div class="value" id="change-7d">--</div>
+    </div>
+    <div class="card">
+      <h2>30d Change</h2>
+      <div class="value" id="change-30d">--</div>
+    </div>
+    <div class="card">
+      <h2>All-Time High</h2>
+      <div class="value" id="ath">--</div>
+      <div class="sub" id="ath-date">--</div>
+    </div>
+  </div>
+
+  <!-- Chart + metrics -->
+  <div class="grid-2" style="margin-bottom:1rem;">
+    <div class="card">
+      <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.75rem;">
+        7-Day Price Trend
+      </div>
+      <div style="position:relative; height:200px;">
+        <canvas id="priceChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.75rem;">
+        Market Metrics
+      </div>
+      <table>
+        <tbody>
+          <tr>
+            <td class="muted">Circulating Supply</td>
+            <td id="supply" style="text-align:right; font-weight:600;">--</td>
+          </tr>
+          <tr>
+            <td class="muted">Max Supply</td>
+            <td style="text-align:right; font-weight:600;">21.00M BTC</td>
+          </tr>
+          <tr>
+            <td class="muted">Market Cap Rank</td>
+            <td id="rank" style="text-align:right; font-weight:600;">--</td>
+          </tr>
+          <tr>
+            <td class="muted">1Y Change</td>
+            <td id="change-1y" style="text-align:right; font-weight:600;">--</td>
+          </tr>
+          <tr>
+            <td class="muted">Last Updated</td>
+            <td id="updated" style="text-align:right; font-size:0.8rem;">--</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Daily table -->
+  <div class="card">
+    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.75rem;">
+      Last 7 Days — Daily Prices
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th style="text-align:right;">Open</th>
+          <th style="text-align:right;">Close</th>
+          <th style="text-align:right;">Change</th>
+        </tr>
+      </thead>
+      <tbody id="price-table"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<style>
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+  let priceChart = null;
+
+  function fmt(n)   { return '$' + Math.round(n).toLocaleString(); }
+  function fmtB(n) {
+    if (n >= 1e12) return '$' + (n/1e12).toFixed(2) + 'T';
+    if (n >= 1e9)  return '$' + (n/1e9).toFixed(2) + 'B';
+    if (n >= 1e6)  return '$' + (n/1e6).toFixed(2) + 'M';
+    return '$' + Math.round(n).toLocaleString();
+  }
+  function fmtPct(n) {
+    return (n >= 0 ? '+' : '') + parseFloat(n).toFixed(2) + '%';
+  }
+  function setColored(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = fmtPct(val);
+    el.style.color = val >= 0 ? 'var(--green)' : 'var(--orange)';
+  }
+
+  async function fetchAll() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('content').style.display = 'none';
+
+    try {
+      const [coinRes, histRes] = await Promise.all([
+        fetch('https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=false&developer_data=false'),
+        fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7&interval=daily')
+      ]);
+
+      const coin = await coinRes.json();
+      const hist = await histRes.json();
+      const md   = coin.market_data;
+
+      const price = md.current_price.usd;
+      const ch24  = md.price_change_percentage_24h;
+      const ch7   = md.price_change_percentage_7d;
+      const ch30  = md.price_change_percentage_30d;
+      const ch1y  = md.price_change_percentage_1y;
+
+      document.getElementById('price-main').textContent = fmt(price);
+      document.getElementById('high-24').textContent    = fmt(md.high_24h.usd);
+      document.getElementById('low-24').textContent     = fmt(md.low_24h.usd);
+      document.getElementById('vol-24').textContent     = fmtB(md.total_volume.usd);
+      document.getElementById('mkt-cap').textContent    = fmtB(md.market_cap.usd);
+      document.getElementById('ath').textContent        = fmt(md.ath.usd);
+      document.getElementById('ath-date').textContent   = new Date(md.ath_date.usd).toLocaleDateString();
+      document.getElementById('supply').textContent     = (md.circulating_supply/1e6).toFixed(2) + 'M BTC';
+      document.getElementById('rank').textContent       = '#' + coin.market_cap_rank;
+      document.getElementById('updated').textContent    = new Date().toLocaleTimeString();
+
+      const badge = document.getElementById('change-badge');
+      badge.innerHTML = `<span class="badge ${ch24>=0?'badge-green':'badge-red'}"
+        style="padding:0.3rem 0.8rem; border-radius:20px; font-size:0.85rem; font-weight:600;
+               background:${ch24>=0?'rgba(63,185,80,0.15)':'rgba(247,129,102,0.15)'};
+               color:${ch24>=0?'var(--green)':'var(--orange)'};">
+        ${fmtPct(ch24)} 24h
+      </span>`;
+
+      setColored('change-7d',  ch7);
+      setColored('change-30d', ch30);
+      setColored('change-1y',  ch1y);
+
+      // Chart
+      const prices = hist.prices;
+      const labels = prices.map(p =>
+        new Date(p[0]).toLocaleDateString('en-US', {month:'short', day:'numeric'})
+      );
+      const vals = prices.map(p => Math.round(p[1]));
+      const isUp = vals[vals.length-1] >= vals[0];
+      const lineColor = isUp ? '#3fb950' : '#f78166';
+      const fillColor = isUp ? 'rgba(63,185,80,0.08)' : 'rgba(247,129,102,0.08)';
+
+      if (priceChart) priceChart.destroy();
+      priceChart = new Chart(document.getElementById('priceChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: vals,
+            borderColor: lineColor,
+            backgroundColor: fillColor,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: lineColor
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false },
+                 ticks: { color: '#8b949e', font: { size: 11 } } },
+            y: { grid: { color: 'rgba(48,54,61,0.8)' },
+                 ticks: { color: '#8b949e', font: { size: 11 },
+                          callback: v => '$' + Math.round(v/1000) + 'k' } }
+          }
+        }
+      });
+
+      // Daily table
+      const tbody = document.getElementById('price-table');
+      tbody.innerHTML = '';
+      for (let i = 1; i < prices.length; i++) {
+        const open  = prices[i-1][1];
+        const close = prices[i][1];
+        const chg   = (close - open) / open * 100;
+        const tr    = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="color:var(--muted)">${labels[i]}</td>
+          <td style="text-align:right;">${fmt(open)}</td>
+          <td style="text-align:right;">${fmt(close)}</td>
+          <td style="text-align:right;
+               color:${chg>=0?'var(--green)':'var(--orange)'};">
+            ${fmtPct(chg)}
+          </td>`;
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+
+    } catch(e) {
+      document.getElementById('loading').textContent =
+        'API rate limited. Wait 1 minute and click Refresh.';
+    }
+  }
+
+  fetchAll();
+  setInterval(fetchAll, 60000);
+</script>
+
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends "predictor/base.html" %}
+{% block title %}BTC Forecast — {{ days }} Days{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.5rem; font-weight:700;">
+    {{ days }}-Day Price Forecast
+  </h1>
+  <p class="muted" style="margin-top:0.3rem; font-size:0.9rem;">
+    Past data (2018–2024) + Live data (CoinGecko) → LSTM-GRU Model → Future forecast
+  </p>
+</div>
+
+<!-- Data source badge -->
+<div class="card" style="margin-bottom:1rem; padding:0.75rem 1.25rem;
+     display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+  <div style="display:flex; align-items:center; gap:0.5rem;">
+    {% if is_live %}
+      <span style="width:10px; height:10px; border-radius:50%;
+             background:var(--green); display:inline-block;
+             animation: pulse 1.5s infinite;"></span>
+      <span style="font-size:0.85rem; color:var(--green); font-weight:600;">
+        LIVE DATA
+      </span>
+      <span style="font-size:0.85rem; color:var(--muted);">
+        — CoinGecko last {{ seed_days }} days feeding model
+      </span>
+    {% else %}
+      <span style="width:10px; height:10px; border-radius:50%;
+             background:var(--yellow); display:inline-block;"></span>
+      <span style="font-size:0.85rem; color:var(--yellow); font-weight:600;">
+        OFFLINE
+      </span>
+      <span style="font-size:0.85rem; color:var(--muted);">
+        — Using CSV data (check internet connection)
+      </span>
+    {% endif %}
+  </div>
+  <div style="margin-left:auto; font-size:0.85rem; color:var(--muted);">
+    Model seed: last {{ seed_days }} days &nbsp;|&nbsp;
+    Source: {{ data_source }}
+  </div>
+</div>
+
+<!-- Key numbers -->
+<div class="grid-4" style="margin-bottom:1rem;">
+  <div class="card">
+    <h2>Live BTC Price</h2>
+    <div class="value yellow">${{ live_price }}</div>
+    <div class="sub">
+      {% if live_change >= 0 %}
+        <span style="color:var(--green);">+{{ live_change }}%</span>
+      {% else %}
+        <span style="color:var(--orange);">{{ live_change }}%</span>
+      {% endif %}
+      24h change
+    </div>
+  </div>
+  <div class="card">
+    <h2>Model Input Price</h2>
+    <div class="value">${{ current }}</div>
+    <div class="sub">Last price fed to model</div>
+  </div>
+  <div class="card">
+    <h2>D+{{ days }} Forecast</h2>
+    <div class="value
+      {% if change_pct|slice:':1' == '-' %}red{% else %}green{% endif %}">
+      ${{ d30 }}
+    </div>
+    <div class="sub">
+      <span class="{% if change_pct|slice:':1' == '-' %}red{% else %}green{% endif %}">
+        {{ change_pct }}%
+      </span>
+      from now
+    </div>
+  </div>
+  <div class="card">
+    <h2>14d Momentum</h2>
+    <div class="value
+      {% if momentum|slice:':1' == '-' %}red{% else %}green{% endif %}">
+      {{ momentum }}%
+    </div>
+    <div class="sub">per day (live trend)</div>
+  </div>
+</div>
+
+<!-- Horizon buttons -->
+<div class="card" style="margin-bottom:1rem; padding:0.75rem 1.25rem;
+     display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+  <span style="font-size:0.85rem; color:var(--muted);">Forecast horizon:</span>
+  <form method="get" style="display:flex; gap:0.5rem;">
+    {% for d in days_list %}
+    <button type="submit" name="days" value="{{ d }}"
+            style="padding:0.3rem 0.9rem; border-radius:6px; cursor:pointer;
+                   font-size:0.85rem; font-weight:600;
+                   background:{% if days == d %}var(--yellow){% else %}transparent{% endif %};
+                   color:{% if days == d %}#000{% else %}var(--text){% endif %};
+                   border:1px solid {% if days == d %}var(--yellow){% else %}var(--border){% endif %};">
+      {{ d }}d
+    </button>
+    {% endfor %}
+  </form>
+</div>
+
+<!-- Main chart -->
+{% if chart %}
+<div class="card" style="margin-bottom:1rem;">
+  <div style="display:flex; align-items:center; justify-content:space-between;
+       margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+    <h3 style="font-size:0.95rem; font-weight:600;">
+      Full Chart — Past History + Live Data + Forecast
+    </h3>
+    <div style="display:flex; gap:1rem; font-size:0.8rem; color:var(--muted);">
+      <span style="color:#8b949e;">■ Past (CSV)</span>
+      <span style="color:var(--blue);">■ Live (90d)</span>
+      <span style="color:var(--green);">■ Forecast</span>
+    </div>
+  </div>
+  <img src="data:image/png;base64,{{ chart }}"
+       style="width:100%; border-radius:8px;" alt="Forecast chart"/>
+</div>
+{% endif %}
+
+<!-- Forecast table -->
+{% if table %}
+<div class="card" style="margin-bottom:1rem;">
+  <div style="display:flex; align-items:center;
+       justify-content:space-between; margin-bottom:0.75rem;">
+    <h3 style="font-size:0.95rem; font-weight:600;">Key Forecast Dates</h3>
+    <a href="/api/forecast/?days={{ days }}"
+       target="_blank"
+       style="font-size:0.8rem; color:var(--blue); text-decoration:none;">
+      JSON API →
+    </a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th style="text-align:right;">Forecast</th>
+        <th style="text-align:right;">Upper Band</th>
+        <th style="text-align:right;">Lower Band</th>
+        <th style="text-align:right;">vs Now</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in table %}
+      <tr>
+        <td class="muted">{{ row.date }}</td>
+        <td style="text-align:right; font-weight:600;">${{ row.forecast }}</td>
+        <td style="text-align:right; color:var(--green);">${{ row.upper }}</td>
+        <td style="text-align:right; color:var(--orange);">${{ row.lower }}</td>
+        <td style="text-align:right;">
+          {% if "-" in row.change_pct %}
+            <span style="background:rgba(247,129,102,0.15);
+                   color:var(--orange); padding:2px 8px;
+                   border-radius:20px; font-size:0.8rem;">
+              {{ row.change_pct }}
+            </span>
+          {% else %}
+            <span style="background:rgba(63,185,80,0.15);
+                   color:var(--green); padding:2px 8px;
+                   border-radius:20px; font-size:0.8rem;">
+              {{ row.change_pct }}
+            </span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- How it works -->
+<div class="card" style="margin-bottom:1rem;">
+  <h3 style="font-size:0.95rem; font-weight:600; margin-bottom:0.75rem;">
+    How This Forecast Works
+  </h3>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+       gap:1rem; font-size:0.85rem;">
+    <div style="border-left:3px solid #8b949e; padding-left:0.75rem;">
+      <div style="font-weight:600; color:var(--text); margin-bottom:4px;">
+        Step 1 — Past Data
+      </div>
+      <div class="muted">
+        2018–2024 historical CSV data used to train the LSTM-GRU model
+      </div>
+    </div>
+    <div style="border-left:3px solid var(--blue); padding-left:0.75rem;">
+      <div style="font-weight:600; color:var(--blue); margin-bottom:4px;">
+        Step 2 — Live Data
+      </div>
+      <div class="muted">
+        CoinGecko API fetches last {{ seed_days }} days of real prices → fed to model
+      </div>
+    </div>
+    <div style="border-left:3px solid var(--green); padding-left:0.75rem;">
+      <div style="font-weight:600; color:var(--green); margin-bottom:4px;">
+        Step 3 — Forecast
+      </div>
+      <div class="muted">
+        Model predicts {{ days }} days ahead. Blended with 14-day momentum
+        ({{ momentum }}%/day) for realism
+      </div>
+    </div>
+    <div style="border-left:3px solid var(--yellow); padding-left:0.75rem;">
+      <div style="font-weight:600; color:var(--yellow); margin-bottom:4px;">
+        Step 4 — Confidence Band
+      </div>
+      <div class="muted">
+        Uncertainty widens over time using {{ volatility }}% daily volatility
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Disclaimer -->
+<div class="card" style="background:rgba(247,129,102,0.05);
+     border-color:rgba(247,129,102,0.3);">
+  <p style="font-size:0.82rem; color:var(--muted); line-height:1.7;">
+    <strong style="color:var(--orange);">Disclaimer:</strong>
+    This is for educational purposes only. Crypto markets are
+    highly volatile and influenced by news, regulations, and sentiment
+    which this model cannot predict.
+    <strong style="color:var(--orange);">Not financial advice.</strong>
+  </p>
+</div>
+
+<style>
+  @keyframes pulse {
+    0%,100% { opacity:1; }
+    50%      { opacity:0.3; }
+  }
+</style>
+
+{% endblock %}

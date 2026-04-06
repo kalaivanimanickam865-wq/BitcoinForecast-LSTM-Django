@@ -14,3 +14,6 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bitcoinproject.settings')
 
 application = get_wsgi_application()
+
+from model_downloader import download_models
+download_models()

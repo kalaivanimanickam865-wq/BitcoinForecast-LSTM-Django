@@ -1,0 +1,12 @@
+django
+tensorflow
+scikit-learn
+numpy
+pandas
+matplotlib
+joblib
+yfinance
+requests
+gunicorn
+whitenoise
+pillow

@@ -1,1 +1,1 @@
-web: gunicorn bitcoinproject.wsgi --log-file -
+web: gunicorn --chdir BitcoinDjango bitcoinproject.wsgi --log-file - 
